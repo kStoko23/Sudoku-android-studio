@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Something2D/2D-Game-Unity" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Sudoku-game-java" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/SudokuGame/Sudoku-game-java" vcs="Git" />
+  </component>
+</project>
