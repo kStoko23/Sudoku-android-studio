@@ -56,7 +56,7 @@ public class GameBoard extends View {
     private final Paint textPaint = new Paint();
     private final Paint inputTextPaint = new Paint();
     //endregion
-    public interface OnGameOverListener {
+    private interface OnGameOverListener {
         void onGameOver();
     }
     public GameBoard(Context context, @Nullable AttributeSet attrs) {
@@ -91,7 +91,7 @@ public class GameBoard extends View {
         //generating the sudoku board & removing numbers (more==harder)
         generator = new SudokuGenerator();
         sudokuBoard = generator.generate();
-        removedNumbers = generator.removeNumbers(3);
+        removedNumbers = generator.removeNumbers(40);
 
         //initialize editableCells
         editableCells = new boolean[9][9];
@@ -353,21 +353,26 @@ public class GameBoard extends View {
             context.startActivity(intent);
         }
     }
-    //region newGame() methods TODO: fix, not working properly
+    //region New Game methods
     //resetBoard(): Resets the game board by generating a new Sudoku puzzle
     public void resetBoard() {
         sudokuBoard = generator.generate();
+        removedNumbers = generator.removeNumbers(40);
         updateEditableCells();
-        //generator.removeNumbers(3);
-        drawNumbers(new Canvas(), textPaint);
+        hintsLeft = 3;
+        hintRequested = false;
+        showHint = false;
         invalidate();
     }
     //updateEditableCells(): Updates the editable cells based on the new Sudoku puzzle
     public void updateEditableCells() {
         for (int row = 0; row < 9; row++) {
             for (int col = 0; col < 9; col++) {
-                editableCells[row][col] = (sudokuBoard[row][col] == 0);
+                editableCells[row][col] = false;
             }
+        }
+        for (RemovedNumber removedNumber : removedNumbers) {
+            editableCells[removedNumber.row][removedNumber.col] = true;
         }
     }
     //endregion
