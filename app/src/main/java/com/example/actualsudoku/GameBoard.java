@@ -1,6 +1,8 @@
 package com.example.actualsudoku;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -8,29 +10,28 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Chronometer;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
-
 import java.util.List;
-//This class is the view for the game board
-//It handles all the drawing and touch events
-//Sudoku is generated in the SudokuGenerator class
-//The game board is a 9x9 grid, with 3x3 squares
-//The game board is drawn using a 2d array
-//Overriding the onTouchEvent method makes the rows and columns
-//highlighted when the user touches the screen, as well as a 3x3 subgrid
-//resources:
-//https://www.youtube.com/watch?v=lYjSl_ou05Q -- for the base of the drawing,
+//This class serves as the view for the Sudoku game board and manages all the drawing and touch events.
+// It interacts with the SudokuGenerator class to generate and display a Sudoku puzzle on a 9x9 grid,
+// divided into 3x3 subgrids.
+// The game board is represented using a 2D array.
+// By overriding the onTouchEvent method,
+// this class provides visual feedback to the user by highlighting the selected row, column, and corresponding 3x3 subgrid.
+// Additionally, it handles user input, game progress, and implements game features such as hints and checking for game completion.
+//
+// Resources:
+// https://www.youtube.com/watch?v=lYjSl_ou05Q -- for the base of the drawing,
 // very helpful video on how to draw a sudoku board
-//https://www.youtube.com/watch?v=o6P05m0E9z4&list=PLJSII25WrAz72NhnBitybKMMX0_f1UEym -- this one as well
+// https://www.youtube.com/watch?v=o6P05m0E9z4&list=PLJSII25WrAz72NhnBitybKMMX0_f1UEym -- this one as well
 
 public class GameBoard extends View {
     //region Constants
     private final int boardColor;
-
     //endregion
-    //region Variables
+    //region Fields
     private int cellSize;
     private int selectedRow = -1;
     private int selectedCol = -1;
@@ -43,6 +44,8 @@ public class GameBoard extends View {
     private int[][] sudokuBoard;
     private OnGameOverListener gameOverListener;
     private SudokuGenerator generator;
+    private boolean[][] editableCells;
+
     //endregion
     //region Paints
     private final Paint cellHighlightPaint = new Paint();
@@ -51,12 +54,11 @@ public class GameBoard extends View {
     private final Paint squareHighlightPaint = new Paint();
     private final Paint boardPaint = new Paint();
     private final Paint textPaint = new Paint();
+    private final Paint inputTextPaint = new Paint();
     //endregion
-
     public interface OnGameOverListener {
         void onGameOver();
     }
-
     public GameBoard(Context context, @Nullable AttributeSet attrs) {
         //constructor
         //gets the attributes from the xml file
@@ -91,13 +93,15 @@ public class GameBoard extends View {
         sudokuBoard = generator.generate();
         removedNumbers = generator.removeNumbers(3);
 
-        //for checking if it works, appears it does, TODO: remove later
-        /*for (RemovedNumber removedNumber : removedNumbers) {
-            System.out.println(removedNumber.row + " " + removedNumber.col + " " + removedNumber.value);
-        }*/
+        //initialize editableCells
+        editableCells = new boolean[9][9];
+        for(RemovedNumber removedNumber : removedNumbers) {
+            editableCells[removedNumber.row][removedNumber.col] = true;
+        }
     }
+    //onMeasure() Measures and sets the dimensions of the game board, ensuring it fits the screen properly
     @Override
-    protected void onMeasure(int widthMeasure, int heightMeasure) { //gets the size of the screen so the board is drawn properly
+    protected void onMeasure(int widthMeasure, int heightMeasure) {
         super.onMeasure(widthMeasure, heightMeasure);
 
         int dimension = Math.min(this.getMeasuredWidth(), this.getMeasuredHeight());
@@ -106,6 +110,7 @@ public class GameBoard extends View {
         setMeasuredDimension(dimension, dimension);
 
     }
+    //onDraw(): Draws the game board, including highlighted cells, hints, and input numbers
     @Override
     protected void onDraw(Canvas canvas){
         //honestly not sure why they can't be in the constructor
@@ -121,6 +126,16 @@ public class GameBoard extends View {
         textPaint.setColor(Color.BLACK);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setAntiAlias(true);
+        textPaint.setSubpixelText(true);
+        textPaint.setLinearText(true);
+
+        inputTextPaint.setStyle(Paint.Style.FILL);
+        inputTextPaint.setTextSize(cellSize * 0.7f);
+        inputTextPaint.setColor(Color.parseColor("#FFA500")); // Orange color
+        inputTextPaint.setTextAlign(Paint.Align.CENTER);
+        inputTextPaint.setAntiAlias(true);
+        inputTextPaint.setSubpixelText(true);
+        inputTextPaint.setLinearText(true);
         //endregion
 
         canvas.drawRect(0,0,getWidth(),getHeight(),boardPaint);
@@ -139,10 +154,11 @@ public class GameBoard extends View {
         drawBoard(canvas);
         drawHint(canvas);
         drawNumbers(canvas,textPaint);
-
+        drawInputNumbers(canvas,inputTextPaint);
     }
     //region Drawing board methods
-    private void drawBoard(Canvas canvas){ //draws the board using drawThickLines() and drawThinLines()
+    //drawBoard(): Draws the board lines, including thin and thick lines, creating a 9x9 grid with 3x3 squares
+    private void drawBoard(Canvas canvas){
         for (int i = 0; i < 9; i++){
             if (i % 3 == 0){
                 drawThickLines(canvas);
@@ -154,17 +170,20 @@ public class GameBoard extends View {
             canvas.drawLine(i * cellSize, 0, i * cellSize, getHeight(), boardPaint);
         }
     }
-    private void drawThickLines(Canvas canvas){ //draws the thick lines around the board and every third column&row
+    //drawThickLines(): Draws the thick lines around the board and every third column & row
+    private void drawThickLines(Canvas canvas){
         boardPaint.setStyle(Paint.Style.STROKE);
         boardPaint.setStrokeWidth(8);
         boardPaint.setColor(boardColor);
     }
-    private void drawThinLines(Canvas canvas){ //draws the thin lines in 3x3 subgrids
+    //drawThinLines(): Draws the thin lines in the 3x3 subgrids
+    private void drawThinLines(Canvas canvas){
         boardPaint.setStyle(Paint.Style.STROKE);
         boardPaint.setStrokeWidth(4);
         boardPaint.setColor(boardColor);
     }
-    private void drawNumbers(Canvas canvas, Paint textPaint) { //draws the initial numbers on the board
+    //drawNumbers(): Draws the initial numbers on the game board
+    private void drawNumbers(Canvas canvas, Paint textPaint) {
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
                 int number = sudokuBoard[i][j];
@@ -176,7 +195,8 @@ public class GameBoard extends View {
             }
         }
     }
-    private void drawHint(Canvas canvas) { //draws a hint on the board if showHint() is true and hintsLeft > 0
+    //drawHint(): Draws a hint on the board if the showHint flag is true and hints are available
+    private void drawHint(Canvas canvas) {
         if(hintsLeft==0){
             showHint=false;
             if (hintRequested) {
@@ -195,6 +215,9 @@ public class GameBoard extends View {
             boardPaint.setColor(Color.BLACK);
             boardPaint.setTextSize(cellSize / 2);
             boardPaint.setTextAlign(Paint.Align.CENTER);
+            boardPaint.setAntiAlias(true);
+            boardPaint.setSubpixelText(true);
+            boardPaint.setLinearText(true);
 
             float textX = x + cellSize / 2;
             float textY = y + (cellSize / 2) - ((boardPaint.descent() + boardPaint.ascent()) / 2);
@@ -206,9 +229,25 @@ public class GameBoard extends View {
             System.out.println(hintsLeft);
         }
     }
+    //drawInputNumbers(): Draws the user-input numbers on the game board
+    private void drawInputNumbers(Canvas canvas, Paint inputTextPaint) {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (editableCells[i][j]) {
+                    int number = sudokuBoard[i][j];
+                    if (number != 0) {
+                        float x = j * cellSize + cellSize / 2;
+                        float y = i * cellSize + cellSize / 2 + (inputTextPaint.getTextSize() / 2) - inputTextPaint.descent();
+                        canvas.drawText(String.valueOf(number), x, y, inputTextPaint);
+                    }
+                }
+            }
+        }
+    }
     //endregion
+    //onTouchEvent(): Handles touch events, selecting a cell or filling it with the input number
     @Override
-    public boolean onTouchEvent(MotionEvent event) { //handles the touch events
+    public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             int x = (int) (event.getX() / cellSize);
             int y = (int) (event.getY() / cellSize);
@@ -227,7 +266,8 @@ public class GameBoard extends View {
         }
         return true;
     }
-     public void showHint() { //gets the number for a hint
+    //The showHint() method provides a hint by revealing a hidden cell value on the game board.
+    public void showHint() {
         if (!removedNumbers.isEmpty()) {
             hint = removedNumbers.remove(0);
             showHint = true;
@@ -235,15 +275,17 @@ public class GameBoard extends View {
             invalidate();
         }
     }
-    public void setInputNumber(int number) { //sets the number to be filled in the cell
+    //setInputNumber(): Sets the input number to be filled in the selected cell
+    public void setInputNumber(int number) {
         inputNumber = number;
         if (selectedRow != -1 && selectedCol != -1) {
             fillCell(inputNumber);
             inputNumber = 0;
         }
     }
+    //fillCell(): Fills the selected cell with the input number and checks for game over
     private void fillCell(int number) {
-        if (selectedRow != -1 && selectedCol != -1 && sudokuBoard[selectedRow][selectedCol] == 0) {
+        if (selectedRow != -1 && selectedCol != -1 && editableCells[selectedRow][selectedCol]) {
             sudokuBoard[selectedRow][selectedCol] = number;
             invalidate();
 
@@ -252,14 +294,14 @@ public class GameBoard extends View {
             }
         }
     }
-    public void setOnGameOverListener(OnGameOverListener listener) {
-        this.gameOverListener = listener;
-    }
     //region isGameOver() methods
+    //isGameOver(): Checks if the game is over, considering both board fullness and validity
     private boolean isGameOver() {
         if (isBoardFull()) {
             if (isBoardValid()) {
                 System.out.println("Board is valid");
+                startGameOverActivity();
+                Chronometer chronometer = findViewById(R.id.chronometer);
                 return true;
             } else {
                 System.out.println("Board is not valid");
@@ -268,6 +310,7 @@ public class GameBoard extends View {
         }
         return false;
     }
+    //isBoardFull(): Checks if the game board is completely filled with numbers
     private boolean isBoardFull() {
         for (int row = 0; row < generator.getBoardSize(); row++) {
             for (int col = 0; col < generator.getBoardSize(); col++) {
@@ -278,6 +321,7 @@ public class GameBoard extends View {
         }
         return true;
     }
+    //isBoardValid(): Checks if the filled game board is valid according to Sudoku rules
     private boolean isBoardValid() {
         for (int row = 0; row < generator.getBoardSize(); row++) {
             for (int col = 0; col < generator.getBoardSize(); col++) {
@@ -292,11 +336,39 @@ public class GameBoard extends View {
         }
         return true;
     }
+    //getCell(): Returns the value of a cell at the given row and column
     private int getCell(int row, int col) {
         return sudokuBoard[row][col];
     }
+    //setCell(): Sets the value of a cell at the given row and column
     private void setCell(int row, int col, int value) {
         sudokuBoard[row][col] = value;
+    }
+    //endregion
+    //startGameOverActivity(): Starts the Game Over activity when the game is over
+    private void startGameOverActivity() {
+        Context context = getContext();
+        if (context instanceof Activity) {
+            Intent intent = new Intent(context, GameOverActivity.class);
+            context.startActivity(intent);
+        }
+    }
+    //region newGame() methods TODO: fix, not working properly
+    //resetBoard(): Resets the game board by generating a new Sudoku puzzle
+    public void resetBoard() {
+        sudokuBoard = generator.generate();
+        updateEditableCells();
+        //generator.removeNumbers(3);
+        drawNumbers(new Canvas(), textPaint);
+        invalidate();
+    }
+    //updateEditableCells(): Updates the editable cells based on the new Sudoku puzzle
+    public void updateEditableCells() {
+        for (int row = 0; row < 9; row++) {
+            for (int col = 0; col < 9; col++) {
+                editableCells[row][col] = (sudokuBoard[row][col] == 0);
+            }
+        }
     }
     //endregion
 }
