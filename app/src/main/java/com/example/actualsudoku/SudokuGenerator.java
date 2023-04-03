@@ -16,7 +16,7 @@ import java.util.Set;
 //
 // Resources:
 // https://www.geeksforgeeks.org/sudoku-backtracking-7/
-// https://www.youtube.com/watch?v=G_UYXzGuqvM
+//https://www.youtube.com/watch?v=lYjSl_ou05Q&t=854s
 
 public class SudokuGenerator {
     //region Fields
@@ -90,9 +90,6 @@ public class SudokuGenerator {
                 }
             }
         }
-        int a = 1;
-        int b = 1;
-        int c = a +b;
 
         return removedNumbers;
     }

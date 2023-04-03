@@ -62,6 +62,7 @@ public class GameBoard extends View {
     public GameBoard(Context context, @Nullable AttributeSet attrs) {
         //constructor
         //gets the attributes from the xml file
+
         super(context, attrs);
         TypedArray a = context.getTheme().obtainStyledAttributes(
                 attrs,
@@ -91,7 +92,7 @@ public class GameBoard extends View {
         //generating the sudoku board & removing numbers (more==harder)
         generator = new SudokuGenerator();
         sudokuBoard = generator.generate();
-        removedNumbers = generator.removeNumbers(40);
+        removedNumbers = generator.removeNumbers(3);
 
         //initialize editableCells
         editableCells = new boolean[9][9];
@@ -115,6 +116,7 @@ public class GameBoard extends View {
     protected void onDraw(Canvas canvas){
         //honestly not sure why they can't be in the constructor
         //but it doesn't work if they are
+
         //region PaintsInitiation
         boardPaint.setStyle(Paint.Style.STROKE);
         boardPaint.setStrokeWidth(16);
@@ -131,7 +133,7 @@ public class GameBoard extends View {
 
         inputTextPaint.setStyle(Paint.Style.FILL);
         inputTextPaint.setTextSize(cellSize * 0.7f);
-        inputTextPaint.setColor(Color.parseColor("#FFA500")); // Orange color
+        inputTextPaint.setColor(Color.parseColor("#FFA500"));
         inputTextPaint.setTextAlign(Paint.Align.CENTER);
         inputTextPaint.setAntiAlias(true);
         inputTextPaint.setSubpixelText(true);
@@ -357,7 +359,7 @@ public class GameBoard extends View {
     //resetBoard(): Resets the game board by generating a new Sudoku puzzle
     public void resetBoard() {
         sudokuBoard = generator.generate();
-        removedNumbers = generator.removeNumbers(40);
+        removedNumbers = generator.removeNumbers(3);
         updateEditableCells();
         hintsLeft = 3;
         hintRequested = false;
